@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartFlow AI – Smart Traffic Management</title>
+
+    <!-- Chart.js library from CDN (needs internet to load) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <span class="logo-icon">🚦</span>
+            <h1>SmartFlow <span>AI</span></h1>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#section-stats"    class="nav-link active">📊 Dashboard</a>
+            <a href="#section-camera"   class="nav-link">🎥 Live Camera</a>
+            <a href="#section-density"  class="nav-link">🚗 Density Analysis</a>
+            <a href="#section-signals"  class="nav-link">🚦 Signal Timings</a>
+            <a href="#section-history"  class="nav-link">🕒 History</a>
+        </nav>
+
+        <div class="sidebar-status">
+            <h4>Camera Status</h4>
+            <p id="cameraStatusBadge" class="status-pill status-off">● Not Connected</p>
+            <h4>Data Source</h4>
+            <p id="dataSourceBadge" class="status-pill status-demo">⚠ DEMO DATA</p>
+        </div>
+
+        <p class="sidebar-footer">Hackathon Prototype v1.0<br>Recommendations only — does not control real signals.</p>
+    </aside>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="main">
+
+        <!-- Top control bar -->
+        <header class="topbar">
+            <div class="control-group">
+                <label for="citySelect">City</label>
+                <select id="citySelect"></select>
+            </div>
+            <div class="control-group">
+                <label for="junctionSelect">Junction</label>
+                <select id="junctionSelect"></select>
+            </div>
+            <div class="control-group">
+                <label for="cameraSourceSelect">Camera Source</label>
+                <select id="cameraSourceSelect">
+                    <option value="webcam">Laptop Webcam</option>
+                    <option value="ipcam">Mobile IP Camera</option>
+                    <option value="video">Recorded Video File</option>
+                    <option value="cctv">Registered CCTV/IP Stream</option>
+                </select>
+            </div>
+            <button id="connectBtn" class="btn btn-primary">▶ Connect</button>
+            <button id="stopBtn" class="btn btn-danger" disabled>■ Stop</button>
+        </header>
+
+        <!-- Honesty banner: visible while in demo mode -->
+        <div id="demoBanner" class="demo-banner">
+            ⚠ <strong>DEMO MODE:</strong> The numbers below are <strong>simulated</strong> to test the dashboard.
+            No real camera or AI is connected yet (that comes in later phases).
+        </div>
+
+        <!-- ===== Stats cards ===== -->
+        <section id="section-stats" class="stats-grid">
+            <div class="card stat-card">
+                <p class="stat-label">Total Vehicles</p>
+                <p class="stat-value" id="statTotal">0</p>
+            </div>
+            <div class="card stat-card">
+                <p class="stat-label">Overall Density</p>
+                <p class="stat-value" id="statDensity">—</p>
+            </div>
+            <div class="card stat-card">
+                <p class="stat-label">Recommended Cycle</p>
+                <p class="stat-value" id="statCycle">—</p>
+            </div>
+            <div class="card stat-card">
+                <p class="stat-label">Camera</p>
+                <p class="stat-value" id="statCamera">Offline</p>
+            </div>
+        </section>
+
+        <!-- ===== Live camera + directions ===== -->
+        <section id="section-camera" class="grid-2col">
+
+            <div class="card">
+                <h2>🎥 Live Camera Feed</h2>
+                <div id="videoPanel" class="video-panel">
+                    <!-- JS swaps this content based on connection state -->
+                </div>
+                <p class="camera-note" id="cameraNote">
+                    Camera footage will appear here after connecting (Phase 3).
+                </p>
+            </div>
+
+            <div class="card" id="section-density">
+                <h2>🚗 Direction-wise Density</h2>
+
+                <div class="dir-card">
+                    <div class="dir-head"><span>⬆ North</span><span id="countNorth" class="dir-count">0</span></div>
+                    <div class="bar-track"><div id="barNorth" class="bar-fill"></div></div>
+                    <span id="densityNorth" class="badge">—</span>
+                </div>
+
+                <div class="dir-card">
+                    <div class="dir-head"><span>⬇ South</span><span id="countSouth" class="dir-count">0</span></div>
+                    <div class="bar-track"><div id="barSouth" class="bar-fill"></div></div>
+                    <span id="densitySouth" class="badge">—</span>
+                </div>
+
+                <div class="dir-card">
+                    <div class="dir-head"><span>➡ East</span><span id="countEast" class="dir-count">0</span></div>
+                    <div class="bar-track"><div id="barEast" class="bar-fill"></div></div>
+                    <span id="densityEast" class="badge">—</span>
+                </div>
+
+                <div class="dir-card">
+                    <div class="dir-head"><span>⬅ West</span><span id="countWest" class="dir-count">0</span></div>
+                    <div class="bar-track"><div id="barWest" class="bar-fill"></div></div>
+                    <span id="densityWest" class="badge">—</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Signal recommendations + charts ===== -->
+        <section id="section-signals" class="grid-2col">
+            <div class="card">
+                <h2>🚦 Recommended Signal Timings</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Direction</th><th>Vehicles</th><th>Density</th><th>Green Time</th></tr>
+                    </thead>
+                    <tbody id="signalTableBody"></tbody>
+                </table>
+                <p class="table-note" id="cycleInfo">
+                    Model includes 5s clearance interval per phase for pedestrian/vehicle safety.
+                </p>
+            </div>
+
+            <div class="card">
+                <h2>📊 Vehicle Distribution</h2>
+                <div class="chart-box"><canvas id="chartDistribution"></canvas></div>
+            </div>
+        </section>
+
+        <section class="grid-2col">
+            <div class="card">
+                <h2>⏱ Green Time Comparison</h2>
+                <div class="chart-box"><canvas id="chartSignals"></canvas></div>
+            </div>
+            <div class="card">
+                <h2>📈 Traffic Trend (demo)</h2>
+                <div class="chart-box"><canvas id="chartTrend"></canvas></div>
+            </div>
+        </section>
+
+        <!-- ===== History ===== -->
+        <section id="section-history" class="card">
+            <h2>🕒 Traffic History (demo, in-memory)</h2>
+            <table class="data-table">
+                <thead>
+                    <tr><th>Time</th><th>Junction</th><th>N</th><th>S</th><th>E</th><th>W</th><th>Total</th><th>Density</th></tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr><td colspan="8" class="empty-row">No data yet — connect a camera to begin.</td></tr>
+                </tbody>
+            </table>
+            <p class="table-note">In Phase 7 this history will be stored permanently in SQLite. This demo keeps only the last 10 readings in browser memory.</p>
+        </section>
+
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
